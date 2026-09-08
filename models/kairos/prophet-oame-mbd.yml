@@ -5,19 +5,28 @@ dates:
   benchmark_added: 'TODO'
   paper_published: 'TODO'
 lifecycle: active
-authors:
+authors: 
+- name: Junfu Tan
+  affiliation: Kairos Materials
+  corresponding: false
 - name: Yemin Yu
   affiliation: Kairos Materials
-  email: yeminyu.nb@gmail.com
+  email: yuyemin@kairosmaterial.com
+  corresponding: false
+- name: Kejie Bao
+  affiliation: Kairos Materials
+  corresponding: false
+- name: Ziheng Lu
+  affiliation: Kairos Materials
   corresponding: true
 
 trained_by:
-- name: Yemin Yu
+- name: Ziheng Lu
   affiliation: Kairos Materials
-  email: yeminyu.nb@gmail.com
+  corresponding: true
 
 repo: https://github.com/kairosmaterial/prophet
-doi: null
+doi: TODO
 paper: https://www.kairosmaterials.com/papers/Prophet.pdf
 docs: https://github.com/kairosmaterial/prophet
 pr_url: TODO
@@ -51,7 +60,7 @@ training_cost:
   entries:
   - hardware: NVIDIA A800 SXM4 80GB
     count: 120
-    hours_per_device: 7.25
+    hours_per_device: 48
 hyperparams:
   evaluation:
     max_force: 0.02
@@ -69,21 +78,48 @@ hyperparams:
     lmax: 4
     irreps: 256x0e+96x1o+64x2e+32x3o+32x4e
     radial_basis_size: 64
+    radial_mlp_size: 64
+    radial_mlp_layers: 2
     cutoffs: [3.0, 7.0]
-    fine_tune_optimizer: AdamW (AMSGrad)
-    fine_tune_learning_rate: 1e-4 -> 1e-6 cosine
-    fine_tune_weight_decay: 1e-6
-    fine_tune_steps: 15800
-    ema_decay: 0.999
-    thermal_sources_force_only: true
-    replay_ratio_per_100_steps: MPtrj 35 / sAlex 35 / fc2 15 / fc3 15
+    pretrain:
+      data: OMat24 + ELEMENTA
+      optimizer: Muon
+      learning_rate: 0.01
+      warmup_epochs: 0.1
+      weight_decay: 1e-3
+      batch_size_per_device: 32
+      epochs: 3
+      loss: MAE, E/F/S weights 20/20/5
+      grad_clip_norm: 100.0
+      ema_decay: 0.999
+    fine_tune_stage_1:
+      data: MPtrj + sAlex
+      optimizer: Muon
+      learning_rate: 0.01
+      warmup_epochs: 0.1
+      weight_decay: 1e-3
+      batch_size_per_device: 32
+      epochs: 10
+      loss: MAE, E/F/S weights 20/20/5
+      grad_clip_norm: 100.0
+      ema_decay: 0.999
+    fine_tune_stage_2:
+      data: ELEMENTA Vib with full-set MPtrj + sAlex streaming replay
+      optimizer: AdamW (AMSGrad)
+      learning_rate: 1e-4 -> 1e-6
+      warmup_steps: 50
+      weight_decay: 1e-6
+      batch_size_per_device: 3
+      steps: 15800
+      loss: MAE, E/F/S weights 20/20/5, thermal sources force-only
+      grad_clip_norm: 10.0
+      ema_decay: 0.999
+      replay_ratio_per_100_steps: MPtrj 35 / sAlex 35 / ELEMENTA 30
 notes:
   description: Prophet is an equivariant message-passing interatomic potential
     (62.3M params, 10 layers, lmax 4) built on Multi-Cutoff Spectral Decomposition
-    (nested cutoffs 3/7 A recombined linearly), pretrained on MPtrj/OMat24/sAlex/ELEMENTA
-    and fine-tuned for lattice thermal conductivity on Gaussian-displacement fc2/fc3
-    frames (force-only) with full-set MPtrj + sAlex streaming replay, preserving
-    discovery metrics (zero forgetting).
+    (nested cutoffs 3/7 A), pretrained on OMat24/ELEMENTA for 3 epochs and fine-tuned on Stage 1.MPtrj + sAlex for 10 epochs
+    Stage 2.ELEMENTA-Vib with full-set MPtrj + sAlex streaming replay for 15.8k steps.
 
 metrics:
   discovery:
