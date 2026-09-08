@@ -17,8 +17,8 @@ trained_by:
   email: yeminyu.nb@gmail.com
 
 repo: https://github.com/kairosmaterial/prophet
-doi: TODO
-paper: TODO
+doi: null
+paper: https://www.kairosmaterials.com/papers/Prophet.pdf
 docs: https://github.com/kairosmaterial/prophet
 pr_url: TODO
 checkpoint_url: TODO
