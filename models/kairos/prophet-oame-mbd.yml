@@ -39,7 +39,7 @@ license:
   code: MIT
   code_url: https://github.com/kairosmaterial/prophet/blob/main/LICENSE
   checkpoint: CC-BY-4.0
-  checkpoint_url: TODO
+  checkpoint_url: https://github.com/kairosmaterial/prophet/blob/main/LICENSE-WEIGHTS
 
 environment:
   dependencies:
@@ -127,12 +127,12 @@ hyperparams:
       replay_ratio_per_100_steps: MPtrj 35 / sAlex 35 / ELEMENTA 30
 notes:
   description: Prophet is an equivariant message-passing interatomic potential
-    (62.3M params, 10 layers, lmax 4) built on Multi-Cutoff Spectral Decomposition,
-    which models atomic interactions across nested cutoff scales (3/7 A) and recombines
-    them linearly. It is pretrained on OMat24 and ELEMENTA for 3 epochs, then fine-tuned
-    in two stages - first on MPtrj and sAlex for 10 epochs, then on ELEMENTA Vib with
-    full-set MPtrj + sAlex streaming replay for 15k steps (thermal sources force-only) -
-    improving lattice thermal conductivity while preserving discovery metrics.
+    (62.3M params, 10 layers, lmax 4) built on Multi-Cutoff Spectral Decomposition
+    with nested cutoff scales (3/7 A). It is pretrained on OMat24 and ELEMENTA for 3 epochs, 
+    then fine-tuned in two stages - first on MPtrj and sAlex for 10 epochs, then on ELEMENTA Vib with
+    full-set MPtrj + sAlex streaming replay for 15k steps (thermal sources force-only) to
+    improve lattice thermal conductivity.
+
 metrics:
   discovery:
     pred_file:
