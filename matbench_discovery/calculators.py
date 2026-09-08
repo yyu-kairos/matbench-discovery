@@ -633,7 +633,7 @@ def _hienet(model_key: str) -> Callable[..., Calculator]:
     return make_calc
 
 
-def _mathacker(model_key: str) -> Callable[..., Calculator]:
+def _prophet(model_key: str) -> Callable[..., Calculator]:
     def make_calc(device: str, checkpoint: str | None = None) -> Calculator:
         from prophet import KairosCalculator
 
@@ -897,8 +897,8 @@ CALCULATORS: _CalcRegistry = _CalcRegistry(
         ),
         "chgnet_0_3_0": _runtime_calc_spec("chgnet_0_3_0", _chgnet),
         "hienet": _named_spec(_hienet, "hienet", checkpoint=True),
-        "mathacker_06lx_e150": _named_spec(
-            _mathacker, "mathacker_06lx_e150", checkpoint=True, ext=".pt"
+        "prophet_oame_mbd": _named_spec(
+            _prophet, "prophet_oame_mbd", checkpoint=True, ext=".pt"
         ),
         "nequip_mp_l_0_1": _named_spec(_nequip, "nequip_mp_l_0_1"),
         "nequip_oam_l_0_1": _named_spec(_nequip, "nequip_oam_l_0_1"),
