@@ -322,6 +322,7 @@ class Model(Files, base_dir=f"{ROOT}/models"):
     m3gnet = auto(), "m3gnet/m3gnet.yml"
     mace_mp_0 = auto(), "mace/mace-mp-0.yml"
     mace_mpa_0 = auto(), "mace/mace-mpa-0.yml"
+    mathacker_06lx_e150 = auto(), "kairos/mathacker-06lx-e150.yml"
     matris_10m_mp = auto(), "matris/matris-10m-mp.yml"
     matris_10m_oam = auto(), "matris/matris-10m-oam.yml"
     matris_v050_mptrj = auto(), "matris/matris-v050-mptrj.yml"
