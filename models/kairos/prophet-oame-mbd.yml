@@ -8,21 +8,25 @@ lifecycle: active
 authors: 
 - name: Junfu Tan
   affiliation: Kairos Materials
+  email: junfu.tan@connect.hku.hk
   corresponding: false
 - name: Yemin Yu
   affiliation: Kairos Materials
-  email: yuyemin@kairosmaterial.com
+  email: yuyemin@kairosmaterials.com
   corresponding: false
 - name: Kejie Bao
   affiliation: Kairos Materials
+  email: kjbao@kairosmaterials.com
   corresponding: false
 - name: Ziheng Lu
   affiliation: Kairos Materials
+  email: zihenglu@kairosmaterials.com
   corresponding: true
 
 trained_by:
 - name: Ziheng Lu
   affiliation: Kairos Materials
+  email: zihenglu@kairosmaterials.com
   corresponding: true
 
 repo: https://github.com/kairosmaterial/prophet
@@ -60,7 +64,13 @@ training_cost:
   entries:
   - hardware: NVIDIA A800 SXM4 80GB
     count: 120
-    hours_per_device: 48
+    hours_per_device: 112
+  - hardware: NVIDIA A800 SXM4 80GB
+    count: 120
+    hours_per_device: 28
+  - hardware: NVIDIA A800 SXM4 80GB
+    count: 120
+    hours_per_device: 7.25
 hyperparams:
   evaluation:
     max_force: 0.02
@@ -105,22 +115,24 @@ hyperparams:
       ema_decay: 0.999
     fine_tune_stage_2:
       data: ELEMENTA Vib with full-set MPtrj + sAlex streaming replay
-      optimizer: AdamW (AMSGrad)
+      optimizer: AdamW
       learning_rate: 1e-4 -> 1e-6
       warmup_steps: 50
       weight_decay: 1e-6
       batch_size_per_device: 3
-      steps: 15800
+      steps: 15000
       loss: MAE, E/F/S weights 20/20/5, thermal sources force-only
       grad_clip_norm: 10.0
       ema_decay: 0.999
       replay_ratio_per_100_steps: MPtrj 35 / sAlex 35 / ELEMENTA 30
 notes:
   description: Prophet is an equivariant message-passing interatomic potential
-    (62.3M params, 10 layers, lmax 4) built on Multi-Cutoff Spectral Decomposition
-    (nested cutoffs 3/7 A), pretrained on OMat24/ELEMENTA for 3 epochs and fine-tuned on Stage 1.MPtrj + sAlex for 10 epochs
-    Stage 2.ELEMENTA-Vib with full-set MPtrj + sAlex streaming replay for 15.8k steps.
-
+    (62.3M params, 10 layers, lmax 4) built on Multi-Cutoff Spectral Decomposition,
+    which models atomic interactions across nested cutoff scales (3/7 A) and recombines
+    them linearly. It is pretrained on OMat24 and ELEMENTA for 3 epochs, then fine-tuned
+    in two stages - first on MPtrj and sAlex for 10 epochs, then on ELEMENTA Vib with
+    full-set MPtrj + sAlex streaming replay for 15k steps (thermal sources force-only) -
+    improving lattice thermal conductivity while preserving discovery metrics.
 metrics:
   discovery:
     pred_file:
