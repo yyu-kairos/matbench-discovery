@@ -34,7 +34,7 @@ doi: TODO
 paper: https://www.kairosmaterials.com/papers/Prophet.pdf
 docs: https://github.com/kairosmaterial/prophet
 pr_url: TODO
-checkpoint_url: TODO
+checkpoint_url: https://huggingface.co/kairosmaterial/prophet/resolve/main/prophet-oame-mbd.pt
 license:
   code: MIT
   code_url: https://github.com/kairosmaterial/prophet/blob/main/LICENSE
