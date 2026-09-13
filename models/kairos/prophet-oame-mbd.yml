@@ -64,7 +64,10 @@ training_cost:
   entries:
   - hardware: NVIDIA A800 SXM4 80GB
     count: 120
-    hours_per_device: 112
+    hours_per_device: 36
+  - hardware: NVIDIA A800 SXM4 80GB
+    count: 120
+    hours_per_device: 76
   - hardware: NVIDIA A800 SXM4 80GB
     count: 120
     hours_per_device: 28
@@ -92,7 +95,7 @@ hyperparams:
     radial_mlp_layers: 2
     cutoffs: [3.0, 7.0]
     pretrain:
-      data: OMat24 + ELEMENTA
+      data: OMat24
       optimizer: Muon
       learning_rate: 0.01
       warmup_epochs: 0.1
@@ -103,6 +106,10 @@ hyperparams:
       grad_clip_norm: 100.0
       ema_decay: 0.999
     fine_tune_stage_1:
+      data: ELEMENTA
+      hyperparameters: identical to pretrain
+      epochs: 3
+    fine_tune_stage_2:
       data: MPtrj + sAlex
       optimizer: Muon
       learning_rate: 0.01
@@ -113,9 +120,9 @@ hyperparams:
       loss: MAE, E/F/S weights 20/20/5
       grad_clip_norm: 100.0
       ema_decay: 0.999
-    fine_tune_stage_2:
+    fine_tune_stage_3:
       data: ELEMENTA Vib with full-set MPtrj + sAlex streaming replay
-      optimizer: AdamW
+      optimizer: AdamW (AMSGrad)
       learning_rate: 1e-4 -> 1e-6
       warmup_steps: 50
       weight_decay: 1e-6
@@ -126,12 +133,13 @@ hyperparams:
       ema_decay: 0.999
       replay_ratio_per_100_steps: MPtrj 35 / sAlex 35 / ELEMENTA 30
 notes:
-  description: Prophet is an equivariant message-passing interatomic potential
-    (62.3M params, 10 layers, lmax 4) built on Multi-Cutoff Spectral Decomposition
-    with nested cutoff scales (3/7 A). It is pretrained on OMat24 and ELEMENTA for 3 epochs, 
-    then fine-tuned in two stages - first on MPtrj and sAlex for 10 epochs, then on ELEMENTA Vib with
-    full-set MPtrj + sAlex streaming replay for 15k steps (thermal sources force-only) to
-    improve lattice thermal conductivity.
+  description: Prophet is an equivariant message-passing interatomic potential by
+    Kairos Materials (62.3M parameters, 10 layers, lmax 4) built on Multi-Cutoff
+    Spectral Decomposition (MCSD), which models atomic interactions across nested
+    cutoff scales (3/7 A) and recombines them linearly. MCSD increases the radial
+    bandwidth of the network while preserving exact E(3) equivariance and a
+    twice-continuously-differentiable energy, so forces and stresses remain
+    analytic derivatives.
 
 metrics:
   discovery:
