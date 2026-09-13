@@ -30,7 +30,7 @@ trained_by:
   corresponding: true
 
 repo: https://github.com/kairosmaterial/prophet
-doi: TODO
+doi: null
 paper: https://www.kairosmaterials.com/papers/Prophet.pdf
 docs: https://github.com/kairosmaterial/prophet
 pr_url: TODO
@@ -145,7 +145,7 @@ metrics:
   discovery:
     pred_file:
       name: models/kairos/prophet-oame-mbd/2026-09-03-discovery.csv.gz
-      url: TODO
+      url: https://figshare.com/files/68503873
       size: 3093671
       md5: 277f7e6a09078dc4a2ac26c406591860
     full_test_set:
@@ -179,7 +179,7 @@ metrics:
   geo_opt:
     pred_file:
       name: models/kairos/prophet-oame-mbd/2026-09-03-geo-opt.jsonl.gz
-      url: TODO
+      url: https://figshare.com/files/68503885
       size: 117605743
       md5: 1f4fc63eab4d022ed9f1155c56b917fa
     symprec=1e-5:
@@ -191,7 +191,7 @@ metrics:
       n_structures: 256963
       analysis_file:
         name: models/kairos/prophet-oame-mbd/2026-09-03-geo-opt-symprec=1e-5-moyo=0.7.9.csv.gz
-        url: TODO
+        url: https://figshare.com/files/68503879
         size: 3352333
         md5: c3f91bd82e7a484c4af0be1dfb7709d3
     symprec=1e-2:
@@ -203,14 +203,14 @@ metrics:
       n_structures: 256963
       analysis_file:
         name: models/kairos/prophet-oame-mbd/2026-09-03-geo-opt-symprec=1e-2-moyo=0.7.9.csv.gz
-        url: TODO
+        url: https://figshare.com/files/68503876
         size: 3238562
         md5: ca76ad60aa0e2439639cceff465b9abe
   phonons:
     kappa_103:
       pred_file:
         name: models/kairos/prophet-oame-mbd/2026-09-07-phonons-kappa-103.json.gz
-        url: TODO
+        url: https://figshare.com/files/68503888
         size: 8400872
         md5: f986422aa02d82e9bf4bc32be1132608
       κ_SRME: 0.0648
@@ -222,7 +222,7 @@ metrics:
   diatomics:
     pred_file:
       name: models/kairos/prophet-oame-mbd/2026-09-03-diatomics.json.gz
-      url: TODO
+      url: https://figshare.com/files/68503870
       size: 246984
       md5: 56ac2c0279c4ca45f0764b566e857715
     tortuosity: 1.225
@@ -240,7 +240,7 @@ metrics:
   md:
     pred_file:
       name: models/kairos/prophet-oame-mbd/2026-09-03-md-metrics.csv.gz
-      url: TODO
+      url: https://figshare.com/files/68503882
       size: 1524
       md5: a6e64c134ce283238173762e81c1be7b
     hardware: NVIDIA A800 SXM4 80GB
