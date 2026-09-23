@@ -149,7 +149,7 @@ describe(`Geo Opt Task Page`, () => {
     expect(sorted_header()?.getAttribute(`aria-sort`)).toBe(`descending`)
     expect(filter_summary_badge(`Training data`)).toContain(`(1)`)
     expect(filter_summary_badge(`Openness`)).toContain(`(2/4)`)
-    expect(checkbox_for(`Heatmap`).checked).toBe(false)
+    expect(checkbox_for(`Show heatmap`).checked).toBe(false)
   })
 
   it(`renders table with correct structure, columns, groups, and units`, async () => {

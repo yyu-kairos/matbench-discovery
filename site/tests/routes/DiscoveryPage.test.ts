@@ -142,7 +142,7 @@ describe(`Discovery Task Page`, () => {
     expect(filter_summary_badge(`Targets`)).toContain(`(F,S,gradient)`)
     expect(heading_texts()).toContainEqual(expect.stringContaining(`RMSD vs F1`))
     expect(filter_summary_badge(`Training data`)).toContain(`(2)`)
-    expect(checkbox_for(`Heatmap`).checked).toBe(false)
+    expect(checkbox_for(`Show heatmap`).checked).toBe(false)
     const header = sorted_header()
     expect(header?.textContent).toContain(`F1`)
     expect(header?.getAttribute(`aria-sort`)).toBe(`ascending`)

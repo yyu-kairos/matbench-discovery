@@ -285,7 +285,7 @@ describe(`Phonons Task Page`, () => {
       expect(header?.textContent).toContain(`κSRE`)
       expect(header?.getAttribute(`aria-sort`)).toBe(`ascending`)
       expect(filter_summary_badge(`Openness`)).toContain(`(1/4)`)
-      expect(checkbox_for(`Heatmap`).checked).toBe(false)
+      expect(checkbox_for(`Show heatmap`).checked).toBe(false)
     },
   )
 })

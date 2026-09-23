@@ -1,4 +1,5 @@
 import TableControls from '$lib/table/TableControls.svelte'
+import { fit_toolbar_links } from '$lib/table/fit-toolbar-links'
 import type { Column } from 'matterviz/table'
 import { ACTIVE_MODELS, ALL_TRAINING_SETS, make_table_filters } from '$lib/models.svelte'
 import { OPENNESS_OPTIONS, type Openness } from '$lib/url-state.svelte'
@@ -9,6 +10,65 @@ import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { doc_query, mount } from '../index'
 
 describe(`TableControls`, () => {
+  it.each([755, 756, 1000])(
+    `fits optional links to a %spx toolbar and updates after resize or label changes`,
+    async (initial_width) => {
+      document.body.innerHTML = `
+        <div class="control-buttons" style="display: flex; column-gap: 12px">
+          <div class="active-filters">Filters</div>
+          <a>Submit a model</a>
+          <a data-toolbar-optional>RSS</a>
+          <button data-toolbar-optional>How to read the table</button>
+          <div class="table-controls" style="font-size: 12px">Compare</div>
+          <div style="display: contents"><button>Export</button></div>
+        </div>`
+      const toolbar = doc_query(`.control-buttons`)
+      const controls = doc_query(`.table-controls`)
+      const links = [...toolbar.querySelectorAll<HTMLElement>(`[data-toolbar-optional]`)]
+      let width = initial_width
+      let required_width = 756
+      Object.defineProperty(toolbar, `clientWidth`, { get: () => width })
+      vi.spyOn(toolbar, `getBoundingClientRect`).mockImplementation(() => {
+        expect(toolbar.style.inlineSize).toBe(`max-content`)
+        expect(controls.style.flexWrap).toBe(`nowrap`)
+        expect(doc_query(`.active-filters`).style.display).toBe(`none`)
+        return new DOMRect(0, 0, required_width, 20)
+      })
+      let resized = () => {}
+      const resize = { observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() }
+      vi.spyOn(globalThis, `ResizeObserver`).mockImplementation(
+        class {
+          observe = resize.observe
+          unobserve = resize.unobserve
+          disconnect = resize.disconnect
+          constructor(callback: ResizeObserverCallback) {
+            resized = () => callback([], resize)
+          }
+        },
+      )
+      const styled_elements = [toolbar, controls, doc_query(`.active-filters`)]
+      const original_styles = styled_elements.map((element) => element.style.cssText)
+      const cleanup = fit_toolbar_links(controls)
+      expect(links.map((link) => link.hidden)).toEqual([width < 756, width < 756])
+      expect(resize.observe).toHaveBeenCalledWith(toolbar)
+      for (width of [755, 1000, 756]) {
+        resized()
+        expect(links.map((link) => link.hidden)).toEqual([width < 756, width < 756])
+        expect(styled_elements.map((element) => element.style.cssText)).toEqual(
+          original_styles,
+        )
+      }
+      required_width = 806
+      controls.textContent = `Compare (12)`
+      await vi.waitFor(() => expect(links.every((link) => link.hidden)).toBe(true))
+      required_width = 756
+      controls.textContent = `Compare`
+      await vi.waitFor(() => expect(links.some((link) => link.hidden)).toBe(false))
+      cleanup?.()
+      expect(resize.disconnect).toHaveBeenCalledOnce()
+    },
+  )
+
   const sample_columns: Column[] = [
     { id: `model`, label: `Model`, description: `Model name`, visible: true },
     { id: `f1`, label: `F1`, description: `F1 Score`, visible: true },
@@ -24,9 +84,9 @@ describe(`TableControls`, () => {
     return summary
   }
 
-  const mount_with_filters = async (models?: ModelData[]) => {
+  const mount_with_filters = async (models?: ModelData[], columns?: Column[]) => {
     const filters = make_table_filters()
-    mount(TableControls, { target: document.body, props: { filters, models } })
+    mount(TableControls, { target: document.body, props: { filters, models, columns } })
     await tick()
     return filters
   }
@@ -34,7 +94,7 @@ describe(`TableControls`, () => {
   it(`keeps desktop and mobile filter trees mounted and wires the sheet`, async () => {
     // both trees stay in the DOM (CSS toggles visibility) so SSR/client markup match
     const filters = await mount_with_filters()
-    expect(document.querySelectorAll(`details.filter-menu`)).toHaveLength(4)
+    expect(document.querySelectorAll(`details.filter-menu`)).toHaveLength(3)
     const sheet_trigger = document.querySelector(`button.filter-sheet-trigger`)
     expect(sheet_trigger).toBeInstanceOf(HTMLButtonElement)
     if (!(sheet_trigger instanceof HTMLButtonElement)) return
@@ -51,23 +111,6 @@ describe(`TableControls`, () => {
     doc_query<HTMLButtonElement>(`button[aria-label="Close model filters"]`).click()
     await tick()
     expect(document.querySelector(`dialog[aria-label="Model filters"]`)).toBeNull()
-  })
-
-  it(`rejects malformed stored filter presets`, async () => {
-    const valid_preset = { training: { OMat24: `exclude` }, openness: [`OSOD`] }
-    const load_presets = async (stored: unknown) => {
-      localStorage.setItem(`metrics-table-filter-presets`, JSON.stringify(stored))
-      vi.resetModules()
-      return (await import(`$lib/filter-presets.svelte`)).user_presets
-    }
-
-    const mixed_presets = {
-      valid: valid_preset,
-      invalid: { training: [], openness: [] },
-    }
-    expect(Object.keys(await load_presets(mixed_presets))).toStrictEqual([`valid`])
-    expect(Object.keys(await load_presets([valid_preset]))).toStrictEqual([])
-    localStorage.removeItem(`metrics-table-filter-presets`)
   })
 
   it(`training-data dropdown lists all datasets with require/exclude checkboxes`, async () => {
@@ -190,84 +233,42 @@ describe(`TableControls`, () => {
     comparison.keys.clear()
   })
 
-  it(`applies the built-in Compliant preset (old compliant cohort in one click)`, async () => {
-    const filters = await mount_with_filters()
+  it.each([false, true])(
+    `applies Compliant models from training filters (mobile=%s)`,
+    async (mobile) => {
+      const filters = await mount_with_filters()
+      if (mobile) {
+        doc_query<HTMLButtonElement>(`button.filter-sheet-trigger`).click()
+        await tick()
+      }
+      const dropdown = mobile
+        ? doc_query(`dialog[aria-label="Model filters"]`)
+        : summary_for(`Training data`).closest(`details`)
+      const compliant_btn = [
+        ...(dropdown?.querySelectorAll<HTMLButtonElement>(`button`) ?? []),
+      ].find((btn) => btn.textContent?.trim() === `Compliant models`)
+      if (!compliant_btn) throw new Error(`Compliant preset button not found`)
+      compliant_btn.click()
+      await tick()
 
-    const dropdown = summary_for(`Presets`).closest(`details`)
-    const compliant_btn = [
-      ...(dropdown?.querySelectorAll<HTMLButtonElement>(`button.preset`) ?? []),
-    ].find((btn) => btn.textContent?.trim() === `Compliant`)
-    if (!compliant_btn) throw new Error(`Compliant preset button not found`)
-    compliant_btn.click()
-    await tick()
-
-    expect(filters.openness).toStrictEqual([`OSOD`])
-    // the preset selects OSOD models trained only on MP-anchored data
-    const targets = `EFS_G`
-    const filter_model = (training_sets: string[], openness: Openness) => ({
-      training_sets,
-      openness,
-      targets,
-    })
-    expect(filters.matches(filter_model([`MPtrj`, `MP 2022`], `OSOD`))).toBe(true)
-    expect(filters.matches(filter_model([`MPtrj`, `OMat24`], `OSOD`))).toBe(false)
-    expect(filters.matches(filter_model([`MPtrj`], `CSOD`))).toBe(false)
-    // Derived filter entries must follow in-place updates and deletion immediately.
-    filters.set_target(`F`, `exclude`)
-    expect(filters.matches(filter_model([`MPtrj`], `OSOD`))).toBe(false)
-    filters.set_target(`F`, `exclude`)
-    expect(filters.matches(filter_model([`MPtrj`], `OSOD`))).toBe(true)
-  })
-
-  it(`saves, applies and deletes user presets via localStorage`, async () => {
-    localStorage.removeItem(`metrics-table-filter-presets`)
-    const filters = await mount_with_filters()
-
-    filters.set_training(`OMat24`, `exclude`)
-    const dropdown = summary_for(`Presets`).closest(`details`)
-    const input = dropdown?.querySelector<HTMLInputElement>(`form input`)
-    if (!input) throw new Error(`preset name input not found`)
-    input.value = `no-omat`
-    input.dispatchEvent(new Event(`input`, { bubbles: true }))
-    await tick()
-    dropdown
-      ?.querySelector(`form`)
-      ?.dispatchEvent(new Event(`submit`, { bubbles: true, cancelable: true }))
-    await tick()
-
-    const stored = JSON.parse(
-      localStorage.getItem(`metrics-table-filter-presets`) ?? `{}`,
-    )
-    expect(stored[`no-omat`]).toStrictEqual({
-      training: { OMat24: `exclude` },
-      openness: [`OSOD`, `OSCD`, `CSOD`, `CSCD`],
-      targets: { F: `require` },
-      fs_mode: `any`,
-    })
-
-    // clear filters, then re-apply via the saved preset button
-    filters.clear()
-    const preset_btn = [
-      ...(dropdown?.querySelectorAll<HTMLButtonElement>(`button.preset`) ?? []),
-    ].find((btn) => btn.textContent?.trim() === `no-omat`)
-    preset_btn?.click()
-    await tick()
-    expect(filters.training).toStrictEqual({ OMat24: `exclude` })
-
-    dropdown
-      ?.querySelector<HTMLButtonElement>(`button[aria-label="Delete preset no-omat"]`)
-      ?.click()
-    await tick()
-    expect(
-      JSON.parse(localStorage.getItem(`metrics-table-filter-presets`) ?? `{}`),
-    ).toStrictEqual({})
-    // deletion is reactive: the preset button disappears from the dropdown
-    expect(
-      [...(dropdown?.querySelectorAll(`button.preset`) ?? [])].map((btn) =>
-        btn.textContent?.trim(),
-      ),
-    ).not.toContain(`no-omat`)
-  })
+      expect(filters.openness).toStrictEqual([`OSOD`])
+      // the preset selects OSOD models trained only on MP-anchored data
+      const targets = `EFS_G`
+      const filter_model = (training_sets: string[], openness: Openness) => ({
+        training_sets,
+        openness,
+        targets,
+      })
+      expect(filters.matches(filter_model([`MPtrj`, `MP 2022`], `OSOD`))).toBe(true)
+      expect(filters.matches(filter_model([`MPtrj`, `OMat24`], `OSOD`))).toBe(false)
+      expect(filters.matches(filter_model([`MPtrj`], `CSOD`))).toBe(false)
+      // Derived filter entries must follow in-place updates and deletion immediately.
+      filters.set_target(`F`, `exclude`)
+      expect(filters.matches(filter_model([`MPtrj`], `OSOD`))).toBe(false)
+      filters.set_target(`F`, `exclude`)
+      expect(filters.matches(filter_model([`MPtrj`], `OSOD`))).toBe(true)
+    },
+  )
 
   it(`openness dropdown toggles values but never hides the last one`, async () => {
     const filters = await mount_with_filters()
@@ -292,10 +293,11 @@ describe(`TableControls`, () => {
     expect(boxes.at(-1)?.checked).toBe(true)
   })
 
-  it(`opens, updates and closes the column visibility panel`, async () => {
+  it(`opens, updates and closes the columns panel with its heatmap setting`, async () => {
+    const filters = make_table_filters()
     mount(TableControls, {
       target: document.body,
-      props: { columns: [...sample_columns] },
+      props: { columns: [...sample_columns], filters },
     })
     await tick()
 
@@ -309,11 +311,21 @@ describe(`TableControls`, () => {
 
     const column_menu = doc_query(`.column-menu`)
     expect(column_menu.getAttribute(`role`)).toBe(`group`)
+    const heatmap = doc_query<HTMLInputElement>(`[aria-label="Toggle heatmap colors"]`)
+    expect(column_menu.contains(heatmap)).toBe(true)
+    expect(heatmap.checked).toBe(true)
+    heatmap.click()
+    await tick()
+    expect(filters.show_heatmap).toBe(false)
+    expect(details.open).toBe(true)
+    heatmap.click()
+    await tick()
+    expect(filters.show_heatmap).toBe(true)
 
     const column_checkboxes =
-      column_menu.querySelectorAll<HTMLInputElement>(`input[type="checkbox"]`)
-    const checkbox_labels = [...column_menu.querySelectorAll(`label`)].map((label) =>
-      label.textContent?.trim(),
+      column_menu.querySelectorAll<HTMLInputElement>(`.toggle-label input`)
+    const checkbox_labels = [...column_menu.querySelectorAll(`.toggle-label`)].map(
+      (label) => label.textContent?.trim(),
     )
     expect(checkbox_labels).toStrictEqual(sample_columns.map((column) => column.label))
 

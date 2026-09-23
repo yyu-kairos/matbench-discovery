@@ -1,5 +1,6 @@
 <script lang="ts">
   import ModelCard from '$lib/model/ModelCard.svelte'
+  import GitHubActivityScatter from '$lib/plot/GitHubActivityScatter.svelte'
   import type { Label } from '$lib/types'
   import { Icon, Popover } from 'svelte-widgets'
   import { Info } from 'svelte-widgets/icons'
@@ -13,6 +14,7 @@
   import { pick_contrast_color } from 'matterviz/colors'
   import { flip } from 'svelte/animate'
   import { fade } from 'svelte/transition'
+  import github_activity_data from './mlip-github-activity.json'
 
   let sort_by: Label = $state(ALL_METRICS.CPS)
   let order: `asc` | `desc` = $state(`desc`)
@@ -73,6 +75,7 @@
 </script>
 
 <h1 id="models">Models</h1>
+<p style="text-align: center"><a href="#github-activity">GitHub activity ↓</a></p>
 
 <!-- minmax(0, 1fr) prevents the full-bleed 100vw list from inflating its grid
 track, which would miscenter it and overflow at wider browser zoom levels. -->
@@ -95,35 +98,32 @@ track, which would miscenter it and overflow at wider browser zoom levels. -->
     {#each sort_options as prop (prop.key)}
       {@const { key, label, description } = prop}
       <li class:active={prop.key == sort_by.key}>
-        <button
-          id={prop.key}
-          onclick={() => {
-            sort_by = prop
-            // ascending for model name (alphabetical) and lower=better metrics
-            order = key === `Model` || prop.better === `lower` ? `asc` : `desc`
-          }}
-          style="position: relative"
-        >
-          {@html label}
-          {#if description}
-            <!-- round page-bg backing so the glyph's transparent cutouts don't show
-            the button's corner behind the badge (no opacity for the same reason) -->
-            <Popover
-              trigger_mode="hover"
-              trap_focus={false}
-              aria-label="Metric description"
+        <Popover trigger_mode="hover" trap_focus={false} aria-label="Metric description">
+          {#snippet trigger(trigger_props)}
+            <button
+              {...trigger_props}
+              id={prop.key}
+              onclick={() => {
+                sort_by = prop
+                // ascending for model name (alphabetical) and lower=better metrics
+                order = key === `Model` || prop.better === `lower` ? `asc` : `desc`
+              }}
+              style="position: relative"
             >
-              {#snippet trigger(trigger_props)}
+              {@html label}
+              {#if description}
+                <!-- round page-bg backing so the glyph's transparent cutouts don't show
+                the button's corner behind the badge (no opacity for the same reason) -->
                 <span
-                  {...trigger_props}
+                  aria-hidden="true"
                   style="width: 8pt; height: 8pt; position: absolute; top: -4pt; right: -4pt; background: var(--page-bg); border-radius: 50%"
                   ><Icon icon={Info} /></span
                 >
-              {/snippet}
-              {@html description}
-            </Popover>
-          {/if}
-        </button>
+              {/if}
+            </button>
+          {/snippet}
+          {@html description ?? ``}
+        </Popover>
       </li>
     {/each}
   </ul>
@@ -168,6 +168,15 @@ track, which would miscenter it and overflow at wider browser zoom levels. -->
     {/each}
   </ol>
 </div>
+
+<section aria-labelledby="github-activity" style="margin-block-start: 2.5em">
+  <h2 id="github-activity" style="text-align: center">GitHub Activity</h2>
+  <p style="text-align: center">
+    Activity across model repositories. Larger dots mean more contributors; color shows
+    commits in the preceding year at the last data update.
+  </p>
+  <GitHubActivityScatter github_data={github_activity_data} />
+</section>
 
 <style>
   legend {

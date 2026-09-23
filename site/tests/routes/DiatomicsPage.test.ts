@@ -82,6 +82,11 @@ describe(`Diatomics Page URL state`, () => {
   it(`defaults to the top three CDS models with curves plus DFT references`, async () => {
     await mount_page()
 
+    expect(document.querySelectorAll(`.score-weights input[type="number"]`)).toHaveLength(
+      4,
+    )
+    expect(doc_query(`.score-weights`).closest(`details`)).toBeNull()
+
     expect([...document.querySelectorAll(`h2`)].map((heading) => heading.id)).toEqual([
       `leaderboard`,
       `model-comparison`,

@@ -1,11 +1,7 @@
 <script lang="ts">
+  import DATASETS from '$data/datasets.yml'
+  import { fit_toolbar_links } from './fit-toolbar-links'
   import type { Column } from 'matterviz/table'
-  import {
-    BUILTIN_PRESETS,
-    delete_user_preset,
-    save_user_preset,
-    user_presets,
-  } from '$lib/filter-presets.svelte'
   import { openness_tooltips } from '$lib/metrics'
   import { comparison, row_model_key } from '$lib/model-comparison.svelte'
   import { ACTIVE_MODELS, make_table_filters } from '$lib/models.svelte'
@@ -110,14 +106,6 @@
       : ` (${filters.targets_param || `all`})`,
   )
 
-  let new_preset_name = $state(``)
-  function save_current_filters(event: SubmitEvent) {
-    event.preventDefault()
-    const name = new_preset_name.trim()
-    if (!name) return
-    save_user_preset(name, filters.as_preset)
-    new_preset_name = ``
-  }
   const close_sheet_on_desktop = (): void => {
     if (globalThis.innerWidth > 600) filter_sheet_open = false
   }
@@ -144,6 +132,20 @@
       <em>exclude</em> = hide models trained on it. Counts show models trained on each dataset
       after all other filters in this view.
     </span>
+    <button
+      style="grid-column: 1 / -1; justify-self: start"
+      title="Open source + open data models trained exclusively on MP-anchored datasets (the former compliant leaderboard cohort)"
+      {@attach tooltip()}
+      onclick={() =>
+        filters.apply({
+          training: Object.fromEntries(
+            filters.training_sets
+              .filter((key) => !DATASETS[key]?.compliant)
+              .map((key) => [key, `exclude`]),
+          ),
+          openness: [`OSOD`],
+        })}>Compliant models</button
+    >
     {@render filter_mode_headers()}
     {#each training_sets_by_model_count as dataset_key (dataset_key)}
       <span>{dataset_key} ({counts.training[dataset_key] ?? 0})</span>
@@ -216,40 +218,6 @@
   </div>
 {/snippet}
 
-{#snippet preset_filters()}
-  <div class="filter-content">
-    {#each Object.entries( { ...BUILTIN_PRESETS, ...user_presets } ) as [name, preset] (name)}
-      <span class="filter-row">
-        <button
-          class="preset"
-          onclick={() => filters.apply(preset)}
-          title={preset.description}
-          {@attach tooltip()}
-        >
-          {name}
-        </button>
-        {#if name in user_presets}
-          <button
-            class="delete-preset"
-            aria-label="Delete preset {name}"
-            onclick={() => delete_user_preset(name)}
-          >
-            <Icon icon={Cross} />
-          </button>
-        {/if}
-      </span>
-    {/each}
-    <form onsubmit={save_current_filters}>
-      <input
-        placeholder="Save current filters as…"
-        aria-label="New preset name"
-        bind:value={new_preset_name}
-      />
-      <button disabled={!new_preset_name.trim()}>Save</button>
-    </form>
-  </div>
-{/snippet}
-
 {#snippet filter_section(mobile: boolean, label: string, title: string, content: Snippet)}
   {#if mobile}
     <section class="sheet-section">
@@ -283,15 +251,9 @@
     `Filter models by which quantities they predict and how forces/stress are computed`,
     target_filters,
   )}
-  {@render filter_section(
-    mobile,
-    `Presets`,
-    `Apply a saved filter combination or save the current one`,
-    preset_filters,
-  )}
 {/snippet}
 
-{#if n_train || filters.openness.length < OPENNESS_OPTIONS.length || target_outputs.some(([key]) => filters.targets[key]) || filters.fs_mode !== `any` || filters.show_selected_only}
+{#if n_train || filters.openness.length < OPENNESS_OPTIONS.length || filters.targets_param || filters.show_selected_only}
   <div class="active-filters" aria-label="Active model filters">
     <span>Filters:</span>
     {#each Object.entries(filters.training) as [dataset, mode] (dataset)}
@@ -327,7 +289,7 @@
 {/if}
 
 {@render leading?.()}
-<div class="table-controls" {...rest}>
+<div class="table-controls" {...rest} {@attach fit_toolbar_links}>
   <button
     class="compare"
     onclick={open_comparison}
@@ -390,21 +352,34 @@
   {/if}
 
   {#if columns.length}
-    <label>
-      <input
-        type="checkbox"
-        bind:checked={filters.show_heatmap}
-        aria-label="Toggle heatmap colors"
-      />
-      Heatmap
-    </label>
-
-    <ToggleMenu bind:columns />
+    <ToggleMenu bind:columns>
+      {#snippet header()}
+        <label class="heatmap-toggle">
+          <input
+            type="checkbox"
+            bind:checked={filters.show_heatmap}
+            aria-label="Toggle heatmap colors"
+          />
+          Show heatmap
+        </label>
+      {/snippet}
+    </ToggleMenu>
   {/if}
 </div>
 {@render trailing?.()}
 
 <style>
+  .heatmap-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.35em;
+    margin: 0;
+    font: inherit;
+    white-space: nowrap;
+    input {
+      margin: 0;
+    }
+  }
   .table-controls {
     position: relative;
     z-index: 5;
@@ -541,26 +516,6 @@
       right: -6pt; /* centered in the 12pt column gap */
       height: 1.2em;
       border-left: 1px solid var(--border);
-    }
-  }
-  .filter-row button.preset {
-    flex: 1;
-    padding: 1pt 6pt;
-    text-align: left;
-  }
-  button.delete-preset {
-    background: none;
-    padding: 0 2pt;
-    opacity: 0.7;
-  }
-  .filter-content form {
-    display: flex;
-    gap: 4pt;
-    margin-top: 4pt;
-    input {
-      width: 13em;
-      font-size: inherit;
-      background: var(--btn-bg);
     }
   }
   .filter-sheet-header {

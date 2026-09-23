@@ -15,6 +15,10 @@ import {
 describe(`MD Task Page`, () => {
   it(`renders page structure with filtered leaderboard and scatter`, () => {
     mount(MdPage, { target: document.body })
+    expect(document.querySelectorAll(`.score-weights input[type="number"]`)).toHaveLength(
+      4,
+    )
+    expect(doc_query(`.score-weights`).closest(`details`)).toBeNull()
 
     expect(document.querySelector(`h1`)?.textContent).toContain(
       `Molecular Dynamics Metrics`,
@@ -87,6 +91,6 @@ describe(`MD Task Page`, () => {
     expect(header?.textContent).toContain(`vDOS`)
     expect(header?.getAttribute(`aria-sort`)).toBe(`ascending`)
     expect(filter_summary_badge(`Training data`)).toContain(`(1)`)
-    expect(checkbox_for(`Heatmap`).checked).toBe(false)
+    expect(checkbox_for(`Show heatmap`).checked).toBe(false)
   })
 })

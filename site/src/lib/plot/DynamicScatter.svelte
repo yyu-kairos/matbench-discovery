@@ -1,5 +1,6 @@
 <script lang="ts" generics="T extends object">
   import { goto } from '$app/navigation'
+  import { comparison } from '$lib/model-comparison.svelte'
   import type { Label, DiscoverySet } from '$lib/types'
   import { extent } from 'd3-array'
   import { format_value_or_num } from 'matterviz/labels'
@@ -81,7 +82,8 @@
     color_key = $bindable(ALL_METRICS.F1.key),
     options = scatter_options,
     show_pareto_frontier = false,
-    highlight_keys,
+    model_selection = true,
+    point_events,
     discovery_set = `unique_prototypes`,
     size_key = $bindable(HYPERPARAMS.model_params.key),
     legend = models_legend,
@@ -102,9 +104,8 @@
     options?: ScatterOption[]
     // trace the staircase of non-dominated models (needs better-direction on both axes)
     show_pareto_frontier?: boolean
-    // when given, only these models are labeled and drawn at full opacity with a ring,
-    // the rest recede into a translucent field
-    highlight_keys?: Set<string>
+    // Share model picks with tables and other plots; dataset plots navigate instead.
+    model_selection?: boolean
     discovery_set?: DiscoverySet
     size_key?: string
     // span the full viewport width (the default on task pages, off inside dialogs)
@@ -278,9 +279,13 @@
     if (tooltip_point && !tooltip_point.metadata) tooltip_point = null
   })
 
-  // without highlight_keys every model is in focus
+  // Keep the plot readable when selected models have no data on its current axes.
+  const has_selection = $derived(
+    model_selection &&
+      plot_data.some(({ metadata }) => comparison.keys.has(metadata.model_key)),
+  )
   const is_dimmed = ({ model_key }: PointMetadata) =>
-    highlight_keys !== undefined && !highlight_keys.has(model_key)
+    has_selection && !comparison.keys.has(model_key)
   // One series per model enables per-model legend toggles. Highlighted models come last
   // so they paint over the dimmed field.
   let series: DataSeries<PointMetadata>[] = $derived([
@@ -309,7 +314,7 @@
             symbol_type: `Circle` as const,
             ...(dimmed
               ? { fill_opacity: 0.3 }
-              : highlight_keys && { stroke: `currentColor`, stroke_width: 1.5 }),
+              : has_selection && { stroke: `currentColor`, stroke_width: 1.5 }),
           },
           color_values: color_entries ? undefined : [color_value],
           size_values: [size_value],
@@ -448,9 +453,12 @@
       sa_iterations: 100,
     }}
     point_events={{
-      onclick: ({ point }) => {
-        const href = point.metadata?.href
-        if (typeof href === `string`) goto(href)
+      ...point_events,
+      onclick: (payload) => {
+        const { model_key, href } = payload.point.metadata ?? {}
+        if (model_selection && typeof model_key === `string`) comparison.toggle(model_key)
+        else if (typeof href === `string`) void goto(href)
+        point_events?.onclick?.(payload)
       },
     }}
     {...rest}
@@ -478,6 +486,7 @@
           {@html axes.size_value.label}:
           {format_value_or_num(metadata.size_value, axes.size_value.format)}<br />
         {/if}
+        {#if model_selection}<small>Click to select or deselect this model.</small>{/if}
       {/if}
     {/snippet}
   </ScatterPlot>

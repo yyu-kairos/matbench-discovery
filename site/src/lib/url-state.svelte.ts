@@ -40,7 +40,7 @@ export const sort_url_entries = (
   [`dir`, sort.dir, default_sort.dir],
 ]
 
-// -- Weighted-score radar weights as a single URL param ------------------------
+// -- Weighted-score weights as a single URL param ------------------------
 // Serialized as comma-joined values in config-key order, e.g. weights=0.5,0.4,0.1.
 type WeightsConfig = Record<string, { weight: number }>
 
@@ -143,13 +143,12 @@ export const FS_MODES = [`any`, `direct`, `gradient`] as const
 export type FsMode = (typeof FS_MODES)[number]
 const DEFAULT_TARGETS = { F: `require` } as const
 export const DEFAULT_TARGETS_PARAM = `F`
-// a saved filter combination (see $lib/filter-presets.svelte.ts)
-export type FilterPreset = {
+// Filter configuration shared by browser-history snapshots and table exports.
+export type FilterConfig = {
   training: Record<string, TrainFilterMode>
   openness: readonly Openness[]
   targets?: Partial<Record<TargetOutput, TrainFilterMode>> // absent = default (require F)
   fs_mode?: FsMode
-  description?: string // tooltip, only set on built-in presets
 }
 // minimal structural model shape keeps this module decoupled from $lib/types
 type FilterableModel = {
@@ -264,31 +263,30 @@ export class UrlTableFilters {
     this.fs_mode = `any`
   }
 
-  apply = (preset: FilterPreset): void => {
-    // keep only known datasets + valid modes: stale localStorage presets (e.g. after a
-    // dataset rename) would otherwise filter models invisibly - unrepresentable in the
-    // URL (url_entries serializes canonical keys only) and not shown by any checkbox
+  apply = (config: FilterConfig): void => {
+    // Snapshots survive deploys; discard obsolete constraints that no current
+    // checkbox or URL parameter could represent.
     this.training = Object.fromEntries(
-      Object.entries(preset.training).filter(
+      Object.entries(config.training).filter(
         ([key, mode]) =>
           this.training_sets.includes(key) && is_one_of(TRAIN_FILTER_MODES, mode),
       ),
     )
-    // filter OPENNESS_OPTIONS (not spread the preset) to keep canonical order and
-    // drop invalid tokens from hand-edited localStorage
-    const shown = OPENNESS_OPTIONS.filter((op) => preset.openness.includes(op))
+    // filter OPENNESS_OPTIONS (not spread the config) to keep canonical order and
+    // drop invalid tokens from stale snapshots
+    const shown = OPENNESS_OPTIONS.filter((op) => config.openness.includes(op))
     this.openness = shown.length > 0 ? shown : [...OPENNESS_OPTIONS]
     this.targets = Object.fromEntries(
-      Object.entries(preset.targets ?? DEFAULT_TARGETS).filter(
+      Object.entries(config.targets ?? DEFAULT_TARGETS).filter(
         ([key, mode]) =>
           is_one_of(target_output_keys, key) && is_one_of(TRAIN_FILTER_MODES, mode),
       ),
     )
-    this.fs_mode = is_one_of(FS_MODES, preset.fs_mode) ? preset.fs_mode : `any`
+    this.fs_mode = is_one_of(FS_MODES, config.fs_mode) ? config.fs_mode : `any`
   }
 
-  // snapshot of the active filters, e.g. for saving as a preset
-  get as_preset(): FilterPreset {
+  // Copy active filters so snapshots do not change with subsequent UI edits.
+  get config(): FilterConfig {
     return {
       training: { ...this.training },
       openness: [...this.openness],

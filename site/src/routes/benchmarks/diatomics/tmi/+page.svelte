@@ -118,7 +118,7 @@
 <ButtonGroup
   label="Element group filter"
   options={element_groups}
-  bind:selected={selected_element_group}
+  bind:value={selected_element_group}
   style="margin-block: 1em"
 />
 

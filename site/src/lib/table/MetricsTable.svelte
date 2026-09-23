@@ -47,7 +47,7 @@
     sort_table_rows,
     table_to_delimited,
   } from 'matterviz/table'
-  import { strip_html } from 'matterviz/utils'
+  import { escape_html, strip_html } from 'matterviz/utils'
   import { download } from 'matterviz/io'
   import { format_num } from 'matterviz/labels'
   import { ActionMenu, type CmdAction, Icon } from 'svelte-widgets'
@@ -283,7 +283,9 @@
   const cps_total_weight = $derived(
     Object.values(CPS_CONFIG).reduce((total, { weight }) => total + weight, 0),
   )
-  async function export_table(export_format: `csv` | `json` | `copy`): Promise<void> {
+  async function export_table(
+    export_format: `csv` | `json` | `copy` | `copy_html`,
+  ): Promise<void> {
     const ordered_columns = columns
       .toSorted(
         (left, right) => column_order.indexOf(left.id) - column_order.indexOf(right.id),
@@ -297,17 +299,25 @@
       })),
     ) as MetricsRow[]
     if (export_format !== `json`) {
-      const text = table_to_delimited(
-        {
-          headers: ordered_columns.map(({ label }) => strip_html(label)),
-          rows: rows.map((row) =>
-            ordered_columns.map(({ id, key = id }) => cell_text(row[key])),
-          ),
-          numeric: [],
-        },
-        export_format === `csv` ? `,` : `\t`,
-      )
-      if (export_format === `copy`) await navigator.clipboard.writeText(text)
+      const matrix = {
+        headers: ordered_columns.map(({ label }) => strip_html(label)),
+        rows: rows.map((row) =>
+          ordered_columns.map(({ id, key = id }) => cell_text(row[key])),
+        ),
+        numeric: [],
+      }
+      const text = table_to_delimited(matrix, export_format === `csv` ? `,` : `\t`)
+      if (export_format === `copy_html`) {
+        const html_row = (values: string[], tag: `th` | `td`) =>
+          `<tr>${values.map((value) => `<${tag} style="border: 1px solid #ccc; padding: 4px 8px; text-align: left">${escape_html(value)}</${tag}>`).join(``)}</tr>`
+        const html = `<table style="border-collapse: collapse"><thead>${html_row(matrix.headers, `th`)}</thead><tbody>${matrix.rows.map((row) => html_row(row, `td`)).join(``)}</tbody></table>`
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            'text/html': new Blob([html], { type: `text/html` }),
+            'text/plain': new Blob([text], { type: `text/plain` }),
+          }),
+        ])
+      } else if (export_format === `copy`) await navigator.clipboard.writeText(text)
       else download(text, `matbench-discovery-${discovery_set}.csv`, `text/csv`)
       return
     }
@@ -365,7 +375,7 @@
           exported_at: new Date().toISOString(),
           discovery_set,
           cps_discovery_set: `unique_prototypes`,
-          filters: { ...filters.as_preset, selected_only: filters.show_selected_only },
+          filters: { ...filters.config, selected_only: filters.show_selected_only },
           sort: active_sort,
           columns: ordered_columns.map(({ id, key, label, format }) => ({
             id,
@@ -565,11 +575,25 @@
         <a href="/contribute">Submit a model</a>
         <a
           href="/rss.xml"
+          data-toolbar-optional
+          style="margin-inline: 0.25em"
           title="Follow new model submissions in your RSS reader"
           {@attach tooltip()}
         >
           <Icon icon={RSS} /> RSS
         </a>
+        <button
+          class="table-guide"
+          data-toolbar-optional
+          type="button"
+          title={`Select a column heading to sort. Hover labels for definitions and n/a cells for missing-result explanations. Click plotted models or double-click table rows to highlight them across tables and plots. Use Compare to view them side by side.\n\nTraining Set counts distinct materials, with relaxation frames in parentheses. When only frame counts are available, those are shown instead.`}
+          {@attach tooltip({
+            touch_focus: true,
+            placement: `bottom`,
+            wrap: `normal`,
+            style: `white-space: pre-line; --tooltip-max-width: 32rem; --tooltip-padding: 0.75em 1em`,
+          })}>How to read the table</button
+        >
       {/snippet}
       {#snippet trailing()}
         <ActionMenu
@@ -583,6 +607,11 @@
               action: () => export_table(`json`),
             },
             { id: `copy`, label: `Copy table`, action: () => export_table(`copy`) },
+            {
+              id: `copy_html`,
+              label: `Copy table as HTML`,
+              action: () => export_table(`copy_html`),
+            },
           ]}
         >
           {#snippet trigger(props)}
@@ -632,6 +661,13 @@
 {/if}
 
 <style>
+  .table-guide {
+    font: inherit;
+    background: none;
+    color: var(--link-color);
+    padding: 0;
+    cursor: help;
+  }
   .ranking-context {
     margin-block: 0.6rem;
     font-size: 0.85em;

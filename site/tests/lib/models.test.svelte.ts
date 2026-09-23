@@ -215,10 +215,10 @@ describe(`make_table_filters`, () => {
     expect(filters.n_active).toBe(0)
   })
 
-  it(`apply drops stale dataset keys and invalid modes from presets`, () => {
+  it(`apply drops stale dataset keys and invalid modes from snapshots`, () => {
     const filters = make_table_filters()
     filters.apply({
-      // deleted-dataset key and garbage mode could come from stale localStorage
+      // A browser-history snapshot can contain keys removed in a later deploy.
       training: {
         MPtrj: `require`,
         'Renamed Dataset': `exclude`,

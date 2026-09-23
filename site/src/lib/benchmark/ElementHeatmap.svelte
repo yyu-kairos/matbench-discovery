@@ -20,7 +20,6 @@
     title: `${dataset.count_unit}${log_scale ? ` (log)` : ``}`,
     tick_labels: counts.length === 1 ? counts : 3,
     snap_ticks: false,
-    tick_format: `d`,
   }}
   style="--ptable-min-tile-size: 0; --elem-symbol-font-size: 60cqw"
 >

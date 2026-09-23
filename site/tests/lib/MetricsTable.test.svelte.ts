@@ -197,7 +197,7 @@ describe(`MetricsTable`, () => {
     })
     mount_table({
       model_filter: (model: ModelData) =>
-        [`cgcnn`, `equflash-29m-oam`].includes(model.model_key),
+        [`cgcnn`, `equflash-29m-oam`, `gnome`].includes(model.model_key),
       filters: all_targets_filters(),
       col_filter: () => true,
     })
@@ -217,13 +217,18 @@ describe(`MetricsTable`, () => {
     expect(
       doc_query(`td[data-col="RMSD"] [data-title]`, unsupported).dataset.title,
     ).toContain(`requires forces`)
+    const gnome = doc_query(`a[href="/models/gnome"]`).closest(`tr`)
+    if (!gnome) throw new Error(`Missing GNoME row`)
+    expect(doc_query(`td[data-col="RMSD"] [data-title]`, gnome).dataset.title).toBe(
+      `Geometry Optimization: no results reported. Model weights are not publicly available.`,
+    )
     const pending_cell = doc_query(`td[data-col="CMDS"]`, pending)
     expect(pending_cell.getAttribute(`data-sort-value`)).toBeNull()
     const trigger = doc_query(`[data-title]`, pending_cell)
     trigger.dispatchEvent(new PointerEvent(`pointerover`, { bubbles: true }))
     await vi.waitFor(() => {
       expect(doc_query(`.custom-tooltip .tooltip-content`).textContent).toBe(
-        `Molecular Dynamics: not evaluated yet. Contributions welcome to add missing model predictions.`,
+        `Molecular Dynamics: no results reported. Contributions welcome to add missing model predictions.`,
       )
     })
   })
@@ -1025,6 +1030,7 @@ describe(`MetricsTable`, () => {
       })
       vi.spyOn(HTMLAnchorElement.prototype, `click`).mockImplementation(() => {})
       const copy = vi.spyOn(navigator.clipboard, `writeText`).mockResolvedValue()
+      const copy_html = vi.spyOn(navigator.clipboard, `write`).mockResolvedValue()
       await mount_with_url(MetricsTable, `http://localhost/?sort=F1&dir=asc`, {
         props: {
           discovery_set,
@@ -1058,6 +1064,7 @@ describe(`MetricsTable`, () => {
           `CSV`,
           `JSON with provenance`,
           `Copy table`,
+          `Copy table as HTML`,
         ])
         const item = items.find((candidate) => candidate.textContent?.trim() === label)
         if (!item) throw new Error(`Missing export option: ${label}`)
@@ -1086,6 +1093,25 @@ describe(`MetricsTable`, () => {
       ])
       await choose_export(`Copy table`)
       expect(copy).toHaveBeenLastCalledWith(csv?.replaceAll(`,`, `\t`))
+      const copied_html_table = async () => {
+        await choose_export(`Copy table as HTML`)
+        const item = copy_html.mock.lastCall?.[0][0]
+        if (!item) throw new Error(`No HTML clipboard item`)
+        expect(item.types).toEqual([`text/html`, `text/plain`])
+        const html = await (await item.getType(`text/html`)).text()
+        const text = await (await item.getType(`text/plain`)).text()
+        const table = new DOMParser().parseFromString(html, `text/html`)
+        const table_rows = [...table.querySelectorAll(`tr`)].map((row) =>
+          [...row.children].map((cell) => cell.textContent),
+        )
+        expect(table_rows.map((row) => row.join(`\t`)).join(`\n`)).toBe(text)
+        expect(table.querySelector(`table`)?.style.borderCollapse).toBe(`collapse`)
+        expect(table.querySelectorAll(`thead th`)).toHaveLength(table_rows[0].length)
+        return table_rows
+      }
+      expect(await copied_html_table()).toEqual(
+        csv?.split(`\n`).map((row) => row.split(`,`)),
+      )
 
       // Changing this view uses shallow URL writes: page.url intentionally stays stale.
       for (const name of [`Params`, `Training Set`, `Org`]) {
@@ -1131,7 +1157,7 @@ describe(`MetricsTable`, () => {
         exported_at: expect.any(String),
         discovery_set,
         cps_discovery_set: `unique_prototypes`,
-        filters: { ...filters.as_preset, selected_only: false },
+        filters: { ...filters.config, selected_only: false },
         weights: score_weight_records(),
         sort: [
           { column: `F1`, ascending: false },
@@ -1183,6 +1209,7 @@ describe(`MetricsTable`, () => {
       await choose_export(`Copy table`)
       expect(copy.mock.lastCall?.[0].split(`\n`)).toHaveLength(2)
       expect(copy.mock.lastCall?.[0]).toContain(exported_models[0].model_name)
+      expect(await copied_html_table()).toHaveLength(2)
       comparison.keys.clear()
       await tick()
       await choose_export(`CSV`)
@@ -1193,6 +1220,7 @@ describe(`MetricsTable`, () => {
         models: [],
         rows: [],
       })
+      expect(await copied_html_table()).toHaveLength(1)
     },
   )
 

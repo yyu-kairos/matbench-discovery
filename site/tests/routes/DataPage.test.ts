@@ -85,12 +85,15 @@ it.each([
     expect(table.querySelector(`.element-tile:not([data-element-symbol])`)).toBeNull()
     const tiles = [...table.querySelectorAll<HTMLElement>(`[data-element-symbol]`)]
     expect(tiles.filter((tile) => tile.style.opacity !== `0.15`)).toHaveLength(n_elements)
-    const ticks = [...table.querySelectorAll(`.tick-label`)].map((label) =>
-      Number(label.textContent),
+    const ticks = [...table.querySelectorAll(`.tick-label`)].map(
+      (label) => label.textContent,
     )
-    expect(ticks[0]).toBe(1)
-    expect(ticks.at(-1)).toBe(count)
-    expect(ticks.every(Number.isInteger)).toBe(true)
+    expect(ticks[0]).toBe(`1`)
+    if (dataset.id === `wbm`) expect(ticks).toEqual([`1`, `10`, `100`, `1k`, `10k`])
+    else
+      expect(
+        ticks.map(Number).every((value) => Number.isInteger(value) && value <= count),
+      ).toBe(true)
     expect(new Set(ticks).size).toBe(ticks.length)
     if (task === `diatomics`)
       expect(doc_query(`.colorbar`, table).textContent).not.toContain(`log`)

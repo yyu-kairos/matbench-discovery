@@ -398,7 +398,7 @@
         {#if is_finite_num(value)}
           {@html metric.description ?? ``}
         {:else}
-          {@html missing_metric_reason(model, metric)}
+          {missing_metric_reason(model, metric)}
         {/if}
       </Popover>
     {/each}
@@ -457,30 +457,33 @@
     {/each}
   </section>
 
-  <details class="run-model">
-    <summary>Run this model</summary>
-    <p>
-      Use the <a href="#dependencies">submitted environment</a> with the
-      {#if model.docs || model.repo}
-        <a href={model.docs || model.repo || ``}>upstream instructions</a>.
-      {:else}
-        <a href="{pkg.repository}/tree/HEAD/models/{model.dirname}">submission files</a>.
-      {/if}
-    </p>
-    {#if runner_command}
+  {#if model.license.checkpoint !== `unreleased`}
+    <details class="run-model">
+      <summary>Run this model</summary>
       <p>
-        From a repository checkout, run <code
-          >uv run models/run_kappa.py --list-models</code
-        >
-        to check checkpoint requirements. If this model requires one, add
-        <code>--checkpoint /path/to/checkpoint</code> below. Then execute the printed command
-        for a phonon smoke test in the model's isolated environment.
+        Use the <a href="#dependencies">submitted environment</a> with the
+        {#if model.docs || model.repo}
+          <a href={model.docs || model.repo || ``}>upstream instructions</a>.
+        {:else}
+          <a href="{pkg.repository}/tree/HEAD/models/{model.dirname}">submission files</a
+          >.
+        {/if}
       </p>
-      <div class="runner-command">
-        <code>{runner_command}</code><CopyButton content={runner_command} />
-      </div>
-    {/if}
-  </details>
+      {#if runner_command}
+        <p>
+          From a repository checkout, run <code
+            >uv run models/run_kappa.py --list-models</code
+          >
+          to check checkpoint requirements. If this model requires one, add
+          <code>--checkpoint /path/to/checkpoint</code> below. Then execute the printed command
+          for a phonon smoke test in the model's isolated environment.
+        </p>
+        <div class="runner-command">
+          <code>{runner_command}</code><CopyButton content={runner_command} />
+        </div>
+      {/if}
+    </details>
+  {/if}
 
   <section id="diagnostics" aria-label="Task diagnostics">
     {#if selected_metric && has_task_results(diagnostic_task)}
@@ -506,7 +509,7 @@
           <div class="energy-parity-controls">
             <ButtonGroup
               class="energy-parity-tabs"
-              bind:selected={energy_parity_tab}
+              bind:value={energy_parity_tab}
               label="Energy parity diagnostics"
               options={energy_parity_options.map((option) => ({
                 ...option,

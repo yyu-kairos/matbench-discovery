@@ -174,8 +174,8 @@ describe(`assemble_row_data`, () => {
   it.each([
     [ALL_METRICS.RMSD, {}, `predicts only energies`, false, `E`],
     [PHONON_METRICS.κ_SRME, {}, `requires forces`, false, `E`],
-    [MD_METRICS.md_combined_score, {}, `not evaluated yet`, true],
-    [DIATOMICS_METRICS.diatomics_combined_score, {}, `not evaluated yet`, true],
+    [MD_METRICS.md_combined_score, {}, `no results reported`, true],
+    [DIATOMICS_METRICS.diatomics_combined_score, {}, `no results reported`, true],
     [
       ALL_METRICS.RMSD,
       {
@@ -221,7 +221,7 @@ describe(`assemble_row_data`, () => {
       false,
     ],
     [ALL_METRICS.CPS, {}, `requires forces`, true, `E`],
-    [ALL_METRICS.CPS, {}, `not evaluated yet`, true],
+    [ALL_METRICS.CPS, {}, `no results reported`, true],
   ] as const)(
     `explains missing results (%#)`,
     (label, metrics, expected, invite, targets: ModelData['targets'] = `EFS_G`) => {
@@ -237,6 +237,23 @@ describe(`assemble_row_data`, () => {
         )
     },
   )
+
+  it.each([
+    ALL_METRICS.CPS,
+    ALL_METRICS.RMSD,
+    PHONON_METRICS.κ_SRME,
+    MD_METRICS.md_combined_score,
+    MD_METRICS.md_run_time_sec,
+    MD_METRICS.md_max_gpu_mem_gb,
+    DIATOMICS_METRICS.diatomics_combined_score,
+  ])(`explains GNoME's missing $label without soliciting predictions`, (label) => {
+    const gnome = MODELS.find(({ model_key }) => model_key === `gnome`)
+    if (!gnome) throw new Error(`Missing GNoME test fixture`)
+    const reason = missing_metric_reason(gnome, label)
+    expect(reason).not.toMatch(/Contributions welcome|not evaluated yet/)
+    expect(reason).toMatch(/Model weights are not publicly available\.$/)
+    expect(reason.match(/Model weights are not publicly available\./g)).toHaveLength(1)
+  })
 
   it.each([
     { task: `diatomics`, multiplier_key: `diatomics_time_multiplier` },

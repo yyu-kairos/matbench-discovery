@@ -18,7 +18,7 @@
   } from '$lib/labels'
   import DiatomicCurve from '$lib/plot/DiatomicCurve.svelte'
   import DynamicScatter from '$lib/plot/DynamicScatter.svelte'
-  import RadarChart from '$lib/plot/RadarChart.svelte'
+  import ScoreWeights from '$lib/ScoreWeights.svelte'
   import { UrlModelSelection } from '$lib/model-selection.svelte'
   import { bind_url_params } from '$lib/url-state.svelte'
   import { valid_query_param } from 'svelte-widgets/url-params'
@@ -191,21 +191,11 @@
   />
 </section>
 
-<details style="margin-block: 1em">
-  <summary>Adjust score weights</summary>
-  <figure class="task-weights">
-    <RadarChart
-      size={260}
-      config={CDS_CONFIG}
-      default_config={DEFAULT_CDS_CONFIG}
-      title_label={DIATOMICS_METRICS.diatomics_combined_score}
-    />
-    <figcaption>
-      Drag the knob to reweight the CDS pillars (see &#9432; for definitions); the table
-      and plots update live.
-    </figcaption>
-  </figure>
-</details>
+<ScoreWeights
+  config={CDS_CONFIG}
+  default_config={DEFAULT_CDS_CONFIG}
+  title_label={DIATOMICS_METRICS.diatomics_combined_score}
+/>
 
 <h2 id="model-comparison" style="text-align: center">
   {@html scatter_axis_label(plot.y)} vs {@html scatter_axis_label(plot.x)}
@@ -263,7 +253,7 @@
   <ButtonGroup
     label="Element group filter"
     options={element_groups}
-    bind:selected={selected_element_group}
+    bind:value={selected_element_group}
   />
 
   <ModelSelect options={selectable_options} bind:value={model_selection.selected} />

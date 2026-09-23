@@ -354,6 +354,7 @@
   <DynamicScatter
     models={filtered}
     item_name="datasets"
+    model_selection={false}
     get_identity={({ key, slug }) => ({ key, name: key, href: `/data/${slug}` })}
     options={plot_options}
     bind:x_key={plot.x}
